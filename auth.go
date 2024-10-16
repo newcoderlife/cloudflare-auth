@@ -119,17 +119,19 @@ func toString(v any) string {
 func (m CloudflareAuth) ServeHTTP(w http.ResponseWriter, r *http.Request, next caddyhttp.Handler) error {
 	jwtToken := r.Header.Get("Cf-Access-Jwt-Assertion")
 	if len(jwtToken) == 0 {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return nil
+		if cookie, err := r.Cookie("CF_Authorization"); err == nil && cookie != nil {
+			jwtToken = cookie.Value
+		}
 	}
-	email := r.Header.Get("Cf-Access-Authenticated-User-Email")
-	if len(email) == 0 {
+	if len(jwtToken) == 0 {
+		m.logger.Sugar().Errorf("JWT token is missing")
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return nil
 	}
 
 	jwks := m.downloadPubKey(jwtToken)
 	if jwks == nil || len(jwks.Keys) == 0 {
+		m.logger.Sugar().Errorf("Failed to get public key")
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return nil
 	}
@@ -184,11 +186,6 @@ func (m CloudflareAuth) ServeHTTP(w http.ResponseWriter, r *http.Request, next c
 	}
 	if !token.Valid {
 		m.logger.Sugar().Errorf("Invalid JWT token: %s, err: %v", toString(token), err)
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return nil
-	}
-	if token.Claims.(jwt.MapClaims)["email"] != email {
-		m.logger.Sugar().Errorf("Email not found in JWT token: %s, err: %v", toString(token), err)
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return nil
 	}

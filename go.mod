@@ -2,7 +2,7 @@ module github.com/newcoderlife/cloudflare-auth
 
 go 1.22
 
-toolchain go1.23.0 // go is trash since 1.21 toolchain feat
+toolchain go1.23.0 // golang is trash since 1.21 toolchain feat
 
 require (
 	github.com/caddyserver/caddy/v2 v2.8.4
